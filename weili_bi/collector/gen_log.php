@@ -23,11 +23,33 @@ $interact_arr = array(
 
 // 访问url类型
 $visit_url_arr = array(
-		'关注',
-		'取消更注',
-		'绑定手机',
-		'取消绑定'
+		'http://www.36kr.com/p/217017.html?ref=index_feature_topics',
+		'http://www.primesplus.com/zh/',
+		'http://socketo.me/docs/hello-world',
+		'https://packagist.org/packages/monolog/monolog'
 		);
+
+// 页面标题
+$page_title_arr = array(
+		'撸管',
+		'iphone6',
+		'积分购机',
+		'饭盒'
+	);
+
+// 活动url
+$act_url_arr = array(
+	'http://www.baidu.com',
+	'http://www.36kr.com',
+	'http://www.qq.com'
+);
+
+// 活动标题
+$act_title_arr = array(
+	'百度',
+	'36氪',
+	'腾讯'
+);
 
 // 活动类型
 $act_arr = array(
@@ -52,6 +74,29 @@ $menu_key_arr = array(
 		'XTVRWHJF'
 		);
 
+// 菜单名称数组
+$menu_name_arr = array(
+	'菜单1',
+	'菜单2',
+	'菜单3',
+	'菜单4',
+	'菜单5',
+	'菜单6',
+	'菜单7',
+	'菜单8',
+	'菜单9',
+	'菜单10',
+	'菜单11',
+	'菜单12'
+);
+
+// 父菜单名称数组
+$parent_name_arr = array(
+	'父菜单1',
+	'父菜单2',
+	'父菜单3'
+);
+
 // 关键词数组
 $keyword_arr = array(
 		'双十一',
@@ -72,50 +117,59 @@ $qrcode_desc_arr = array(
 
 $start_time = "2014-11-01 00:05:00";
 $stamp = strtotime($start_time);
-$now = time() + 5*3600;
+$now = time() - 11*86400;
 
-$branch = '东莞';
+$branch = '02';
 $merchant_id = '0769';
 $merchant_code = 'dg';
 
 do {
 	$datetime = date('Y-m-d H:i:00', $stamp);
 	//echo $datetime."\n";
-	$stamp = $stamp + 1*60;
+	$stamp = $stamp + 10*60;
 	$user_id = mt_rand(1, 99999);
 	$open_id = md5($user_id);
 	$phone = str_pad($user_id, 11, '1', STR_PAD_LEFT);
 	$ctime = date('YmdHis', $stamp);
 	$date = date('Ymd', $stamp);
+	$cookie = substr($open_id, 0, 20);
+	$visit_src = mt_rand(1,2); // 1.内部访问;2.外部访问
+	$user_type = mt_rand(0,1); 
 	// 生成用户操作日志
 	$idx = mt_rand(0, 5);
 	$opt = $opt_type_arr[$idx];
 	$idx = mt_rand(0, 6);
 	$act = $interact_arr[$idx];
-
 	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $opt, $ctime, $act);
 	$line = implode('|', $log_arr);
 	write_log($merchant_code, 'operate', $line, $date);
 	// 生成用户访问日志
 	$idx = mt_rand(0, 3);
+	$page_title = $page_title_arr[$idx];
 	$visit_url = $visit_url_arr[$idx];
-	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $visit_url, $ctime);
+	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $cookie, $user_type, $visit_src, $page_title, $visit_url, $ctime);
 	$line = implode('|', $log_arr);
 	write_log($merchant_code, 'visit', $line, $date);
 	// 生成活动记录日志
 	$idx = mt_rand(0, 2);	
+	$act_id = $idx + 1;
 	$act = $act_arr[$idx];
+	$act_url = $act_url_arr[$idx];
+	$act_title = $act_title_arr[$idx];
 	$status = mt_rand(0, 2);
 	$send_user_id = mt_rand(1, 99999);
 	$rece_user_id = mt_rand(1, 99999);
 	$share_num = uniqid();
-	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $act, $status, $send_user_id, $rece_user_id, $share_num, $ctime);
+	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $user_type, $open_id, $phone, $cookie, $visit_src, $act_id, $act_url, $act_title, $act, $status, $send_user_id, $rece_user_id, $share_num, $ctime);
 	$line = implode('|', $log_arr);
 	write_log($merchant_code, 'activity', $line, $date);
 	// 生成菜单统计日志
 	$idx = mt_rand(0, 11);
 	$menu_key = $menu_key_arr[$idx];
-	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $menu_key, $ctime);
+	$menu_name = $menu_name_arr[$idx];
+	$idx = mt_rand(0, 2);
+	$parent_name = $parent_name_arr[$idx];
+	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $menu_key, $menu_name, $parent_name, $ctime);
 	$line = implode('|', $log_arr);
 	write_log($merchant_code, 'menu', $line, $date);
 	// 生成关键词统计日志
@@ -126,11 +180,13 @@ do {
 	write_log($merchant_code, 'keyword', $line, $date);
 	// 生成二维码统计日志
 	$idx = mt_rand(0, 3);
+	$qrcode_id = $idx + 1;
 	$desc = $qrcode_desc_arr[$idx];
-	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $desc, $ctime);
+	$qrcode_type = mt_rand(1, 2);	// 1.扫码进入；2.扫码关注
+	$log_arr = array($branch, $merchant_id, $merchant_code, $user_id, $open_id, $phone, $qrcode_id, $desc, $qrcode_type, $ctime);
 	$line = implode('|', $log_arr);
 	write_log($merchant_code, 'qrcode', $line, $date);	
-	usleep(20);
+	usleep(10);
 }while($stamp < $now);
 
 function write_log($merchant_code, $log_type, $line, $date) {
