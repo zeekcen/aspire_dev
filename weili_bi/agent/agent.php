@@ -12,9 +12,19 @@ $biz = $argv[1];
 // 日志类型
 $logtype = $argv[2];
 
+// 加载配置文件
 require_once dirname(__FILE__) . '/config.php';
-require_once dirname(__FILE__) . '/class/agent.class.php';
+// agent通信类
+require_once dirname(__FILE__) . '/core/agent.class.php';
+// 日志类型工厂类
+require_once dirname(__FILE__) . '/core/setlog.class.php';
+// 自动加载类
+require_once dirname(__FILE__) . '/core/autoloader.class.php';
+// beanstalk接口类
 require_once dirname(__FILE__) . '/../lib/pheanstalk/pheanstalk_init.php';
+
+// 初始化类自动加载函数
+Autoloader::init();
 
 $agent = new Agent($config);
 $logtypes = $agent->get_logtypes();
@@ -39,6 +49,7 @@ if ( ! $collector) {
 // 配置日志收集服务器
 define('BEAN_HOST', $collector);
 define('BEAN_PORT', '11300');
+
 // 初始化监控对象
 $monitor = new LogMonitor($biz.$logtype);
 
@@ -87,16 +98,13 @@ class LogMonitor {
 	 * 获取log文件路径
 	 */
 	protected function initLog() {
-		switch ($this->type) {
-			case 'dgoperate':
-				$file = '/home/benny/log/dg_operate_10.9.113.128_20141105.log';
-				break;
-			default:
-				die("No this type!\n");
-		}
-		$this->file = $file;
+		// 收集日志类列表
+		$setlog = new Setlog();
+		$logger = $setlog->get_log_instance($this->type);
+		$this->file = $logger->get_file();
+
 		// 创建文件
-		if (!file_exists($this->file)) {
+		if ( ! file_exists($this->file)) {
 			$this->create($this->file);
 		}
 	}
