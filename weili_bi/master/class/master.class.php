@@ -10,21 +10,25 @@ class Master {
 	/**
 	 * @var agent分配给Collector的映射数组
 	 */
-	private $_agent_distr_arr = array();
+	private $_agent2collector = array();
+	/**
+	* @var 分支日志类型数组
+	*/ 
+	private $_logtypes = array();
 	/**
 	 * @var 心跳时间间隔，单位秒
 	 */
 	private $_interval = 10;
 	/**
-	* @var 错误日志路径
+	* @var 日志路径
 	*/
-	private $_error_log = '';
+	private $_log_path = '';
 
 
 	function __construct($config) {
 		$this->_master_host = $config['master_host'];
 		$this->_master_port = $config['master_port'];
-		$this->_error_log = $config['error_log'];
+		$this->_log_path = $config['log_path'];
 
 		// 初始化处理
 		$this->_init_mem();
@@ -43,8 +47,24 @@ class Master {
 	 * 加载配置文件 
 	 */
 	private function _load_ini() {
+		// agent与collector对应关系配置
 		$ini_file = dirname(__FILE__) . '/../ini/agent2collector.ini';
-		$this->_agent2collector = parse_ini_file($ini_file);
+		if ( ! file_exists($ini_file)) {
+			$msg = "Error:{$ini_file} no such file";
+		}else{
+			$msg = "Info:{$ini_file} is loaded successfully";
+			$this->_agent2collector = parse_ini_file($ini_file);
+		}
+		$this->log_msg($msg);
+		// 商户日志类型登记配置
+		$ini_file = dirname(__FILE__) . '/../ini/logtypes.ini';
+		if ( ! file_exists($ini_file)) {
+			$msg = "Error:{$ini_file} no such file";
+		}else{
+			$msg = "Info:{$ini_file} is loaded successfully";
+			$this->_logtypes = parse_ini_file($ini_file, TRUE);
+		}
+		$this->log_msg($msg);
 	}
 
 	/**
@@ -81,10 +101,18 @@ class Master {
 						$collector = $this->_get_collector($agent);
 						if ($collector) $info = array('collector' => $collector);
 						break;
-					case 'heartbeat':
+					case 'agent_heartbeat':
 						$agent = $json_arr['agent'];
 						$this->_set_heartbeat($agent);
 						break;
+					case 'collector_heartbeat':
+						$collector = $json_arr['collector'];
+						$this->_set_heartbeat($collector);
+						break;
+					case 'logtypes':
+						$logtypes = $this->_get_logtypes();
+						if ($logtypes) $info = array('logtypes' => $logtypes);
+						break;	
 					default:
 						break;
 				}
@@ -108,10 +136,20 @@ class Master {
 	}
 
 	/**
+	* 获取服务器提供的日志类型收集信息
+	* @return array
+	*/
+	private function _get_logtypes() {
+		if ( ! empty($this->_logtypes)) return $this->_logtypes;
+		else return FALSE;
+	}
+
+	/**
 	 * 更新心跳
+	* @param string $agent ip
 	 */
-	private function _set_heartbeat($agent) {
-		$key = md5($agent);
+	private function _set_heartbeat($ip) {
+		$key = md5($ip);
 		$val = $this->_mem->get($key);
 		$now = time();
 		if ( ! $val) {
@@ -129,15 +167,24 @@ class Master {
 			// 遍历agents，检查心跳更新时间
 			$now = time();
 			foreach ($this->_agent2collector as $agent=>$collector) {
+				// 检查agent的心跳
 				$key = md5($agent);
 				$val = $this->_mem->get($key);
 				$interval = $now - $val;
-				if ($interval > $this->_interval) {
+				if ( ! $val || $interval > $this->_interval) {
 					// 发送监控告警信息
-					echo "Agent:{$agent} is down";	
+					echo "Error:Agent {$agent} is down\n";	
 				}	
-			}
 
+				// 检查collector的心跳
+				$key = md5($collector);
+				$val = $this->_mem->get($key);
+				$interval = $now - $val;
+				if ( ! $val || $interval > $this->_interval) {
+					// 发送监控告警信息
+					echo "Error: collector {$collector} is down\n";	
+				}
+			}
 			sleep($this->_interval);
 		}
 	}
@@ -148,14 +195,13 @@ class Master {
 	 * @param string $msg 日志内容
 	 */
 	public function log_msg($msg) {
-		$dir = dirname($this->_error_log);
+		$dir = dirname($this->_log_path);
 		// 创建目录
 		if ( !file_exists($dir) ) {
 			mkdir($dir, 0777);
 		}
-
 		$line = date('Y-m-d H:i:s')."\t".$msg."\n";
-		file_put_contents($this->_error_log, $line, FILE_APPEND);
+		file_put_contents($this->_log_path, $line, FILE_APPEND);
 	}	
 
 	public function __destruct() {
