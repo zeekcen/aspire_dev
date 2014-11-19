@@ -1,11 +1,13 @@
 <?php
-class Agent {
+class Collector {
 	private $_socket = NULL;
 	private $_conn = NULL;
-	private $_agent_host = '';
+	private $_collector_host = '';
 	private $_master_host = '';
 	private $_master_port = '';
+
 	private $_log_path = '';
+	private $_cache_dir = '';
 
 	function __construct($config) {
 		$this->_socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
@@ -19,7 +21,7 @@ class Agent {
 
 		$this->_master_host = $config['master_host'];
 		$this->_master_port = $config['master_port'];
-		$this->_agent_host = $config['agent_host'];
+		$this->_collector_host = $config['collector_host'];
 		$this->_log_path = $config['log_path'];
 		$this->_cache_dir = $config['cache_dir'];
 	}
@@ -29,13 +31,14 @@ class Agent {
 	 */
 	public function sock_conn() {
 		$conn = @socket_connect($this->_socket, $this->_master_host, $this->_master_port);
-		if ($conn) {
-			$msg = "Info:Agent connect socket to master successfully";
+		if ( ! $conn) {
+			$msg = "Error:Collector can't connect socket to master"; 
 		}else{
-			$msg = "Error:Agent can't connect socket to master"; 
+			$msg = "Info:Collector connect socket to master successfully"; 
+
 		}
 		$this->log_msg($msg);
-		return $conn ? $conn : FALSE;
+		return $conn ? $conn:FALSE;
 	}
 
 	/**
@@ -52,12 +55,12 @@ class Agent {
 		$conn = $this->sock_conn();
 		while ($conn) {
 			$info = array(
-					'type' => 'agent_heartbeat',
-					'agent' => $this->_agent_host
+					'type' => 'collector_heartbeat',
+					'collector' => $this->_collector_host
 				     );
 			$msg = json_encode($info)."\n";
 			if( ! socket_write($this->_socket, $msg)) {
-				$msg = "Error:Agent send heartbeat to master failed";
+				$msg = "Error:Collector send heartbeat to master failed";
 				$this->log_msg($msg);
 				break;
 			}
@@ -66,36 +69,6 @@ class Agent {
 		$this->sock_close();
 	}
 
-
-	/**
-	 * 获取collector的ip地址
-	 */
-	public function get_collector() {
-		$conn = $this->sock_conn();
-		$request_time = 0;
-		while($conn && $request_time < 5) {
-			$info = array(
-					'type' => 'collector',
-					'agent' => $this->_agent_host
-				     );
-			$msg = json_encode($info)."\n";
-			if( ! socket_write($this->_socket, $msg)) {
-				$msg = "Error:Agent request master for collector IP failed"; 
-				$this->log_msg($msg);
-			}
-			while($buffer = @socket_read($this->_socket, 1024, PHP_NORMAL_READ)) {
-				$json_arr = json_decode(trim($buffer), TRUE);
-				if (isset($json_arr['collector'])) {
-					$this->sock_close();
-					return $json_arr['collector'];
-				}
-				break;
-			}
-			$request_time++;
-		}
-		$this->sock_close();
-		return FALSE;
-	}
 
 	/**
 	 * 获取logtypes配置信息
@@ -122,11 +95,11 @@ class Agent {
 		while($conn && $request_time < 5) {
 			$info = array(
 					'type' => 'logtypes',
-					'collector' => $this->_agent_host
+					'collector' => $this->_collector_host
 				     );
 			$msg = json_encode($info)."\n";
 			if( ! socket_write($this->_socket, $msg)) {
-				$msg = "Error:Agent request master for logtypes failed"; 
+				$msg = "Error:Collector request master for logtypes failed"; 
 				$this->log_msg($msg);
 			}
 			// 从socket获取字符串
@@ -155,6 +128,7 @@ class Agent {
 		if ( !file_exists($dir) ) {
 			mkdir($dir, 0777);
 		}
+
 		$line = date('Y-m-d H:i:s')."\t".$msg."\n";
 		file_put_contents($this->_log_path, $line, FILE_APPEND);
 	}

@@ -6,6 +6,7 @@ $config['master_port'] = '11301';
 // agent IP
 $config['agent_host'] = '127.0.0.1';
 
-// 错误日志
-$config['error_log'] = '/mydev/weili_bi/agent/logs/error.log';
-
+// 日志路径
+$config['log_path'] = '/mydev/weili_bi/agent/logs/agent.log';
+// 缓存目录
+$config['cache_dir'] = '/mydev/weili_bi/agent/cache/';

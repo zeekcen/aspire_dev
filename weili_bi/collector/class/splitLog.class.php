@@ -1,11 +1,8 @@
 <?php
-
-require_once(dirname(__FILE__).'/config.php');
 /**
  * 功能类
  */
 class SplitLog{
-
 	/**
 	 * 字符串转月份
 	 * @param  [type] $str [description]
